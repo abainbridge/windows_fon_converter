@@ -1,0 +1,73 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="..\deadfrog-lib\src\df_bitmap.cpp">
+      <Filter>deadfrog-lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\deadfrog-lib\src\df_bmp.cpp">
+      <Filter>deadfrog-lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\deadfrog-lib\src\df_colour.cpp">
+      <Filter>deadfrog-lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\deadfrog-lib\src\df_common.cpp">
+      <Filter>deadfrog-lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\deadfrog-lib\src\df_font.cpp">
+      <Filter>deadfrog-lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\deadfrog-lib\src\df_master_glyph.cpp">
+      <Filter>deadfrog-lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\deadfrog-lib\src\df_message_dialog.cpp">
+      <Filter>deadfrog-lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\deadfrog-lib\src\df_sized_glyph.cpp">
+      <Filter>deadfrog-lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\deadfrog-lib\src\df_time.cpp">
+      <Filter>deadfrog-lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\deadfrog-lib\src\df_window.cpp">
+      <Filter>deadfrog-lib</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\deadfrog-lib\src\df_bitmap.h">
+      <Filter>deadfrog-lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\deadfrog-lib\src\df_bmp.h">
+      <Filter>deadfrog-lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\deadfrog-lib\src\df_colour.h">
+      <Filter>deadfrog-lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\deadfrog-lib\src\df_common.h">
+      <Filter>deadfrog-lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\deadfrog-lib\src\df_font.h">
+      <Filter>deadfrog-lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\deadfrog-lib\src\df_master_glyph.h">
+      <Filter>deadfrog-lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\deadfrog-lib\src\df_message_dialog.h">
+      <Filter>deadfrog-lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\deadfrog-lib\src\df_sized_glyph.h">
+      <Filter>deadfrog-lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\deadfrog-lib\src\df_time.h">
+      <Filter>deadfrog-lib</Filter>
+    </ClInclude>
+    <ClInclude Include="..\deadfrog-lib\src\df_window.h">
+      <Filter>deadfrog-lib</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="deadfrog-lib">
+      <UniqueIdentifier>{22c1c0cc-663a-4fc4-bbb0-2d482ea908e0}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
