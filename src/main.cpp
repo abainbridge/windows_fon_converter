@@ -155,8 +155,8 @@ struct FntHeader {
 
 struct FullFnt {
     FntHeader hdr;
-    _Glyph glyph_table[1];           // Num entries is last_char - first_char + 2.
-    char *name;
+    _Glyph *glyph_table;           // Num entries is hdr.last_char - hdr.first_char + 2.
+    char name[128];
 };
 
 
@@ -166,28 +166,31 @@ FullFnt *ReadFntResourceItem(FILE *f, int block_size) {
     ReleaseAssert(rt_item.resource_id & 0x8000, "Bad resource id");
     
     int next_item_offset = ftell(f);
-
     int fnt_data_offset = block_size * rt_item.data_offset;
-    //printf("FNT data offset is 0x%x\n", fnt_data_offset);
-
     fseek(f, fnt_data_offset, SEEK_SET);
     
-    FullFnt full_fnt;
-    FntHeader *fnt = &full_fnt.hdr;
+    FullFnt *full_fnt = new FullFnt;
+    FntHeader *fnt = &full_fnt->hdr;
     fread(fnt, 1, sizeof(FntHeader), f);
 
     ReleaseAssert(fnt->version == 0x200, "Version 0x%x found. Only version 0x200 supported.",
         fnt->version);
     
-    //printf("Name: %s\n", (char *)fnt + fnt->name_offset);
-    //printf("%s\n", fnt->copyright);
-    //printf("Bitmap offset is 0x%x\n", fnt->bitmap_offset + fnt_data_offset);
-
     int num_glyphs = fnt->last_char - fnt->first_char + 1;
     int bytes_per_row = ((fnt->max_width + 8) / 8) * num_glyphs - 1;
     int bmp_num_bytes = bytes_per_row * fnt->pix_height;
-    //printf("Bitmap num bytes is 0x%x\n", bmp_num_bytes);
 
+    // Read the glyph table.
+    const int glyph_table_size = fnt->last_char - fnt->first_char + 2;
+    full_fnt->glyph_table = new _Glyph[fnt->last_char - fnt->first_char + 2];
+    fread(full_fnt->glyph_table, 1, sizeof(glyph_table_size), f);
+
+    // Read the name.
+    int pos = ftell(f);
+    fseek(f, fnt_data_offset + fnt->name_offset, SEEK_SET);
+    fread(full_fnt->name, 1, sizeof(full_fnt->name), f);
+
+    // Read the bitmap.
     fseek(f, fnt->bitmap_offset + fnt_data_offset, SEEK_SET);
     u8 *bmp = new u8[bmp_num_bytes];
     fread(bmp, 1, bmp_num_bytes, f);
@@ -216,7 +219,7 @@ FullFnt *ReadFntResourceItem(FILE *f, int block_size) {
 
     fseek(f, next_item_offset, SEEK_SET);
 
-    return NULL;
+    return full_fnt;
 }
 
 
@@ -270,7 +273,7 @@ int main() {
         else if (rtblock.type_id == 0x8008) {
             int next_block_offset = ftell(f) + sizeof(ResourceTableItem)* rtblock.num_of_this_type;
 
-            for (int i = 0; i < 4; i++) {
+            for (int i = 0; i < 1; i++) {
                 BitmapClear(g_window->bmp, g_colourBlack);
 //            for (int i = 0; i < rtblock.num_of_this_type; i++) {
                 ReadFntResourceItem(f, block_size);
