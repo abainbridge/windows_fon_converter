@@ -157,6 +157,7 @@ struct FullFnt {
     FntHeader hdr;
     _Glyph *glyph_table;           // Num entries is hdr.last_char - hdr.first_char + 2.
     char name[128];
+    DfBitmap *bmp;
 };
 
 
@@ -195,6 +196,9 @@ FullFnt *ReadFntResourceItem(FILE *f, int block_size) {
     u8 *bmp = new u8[bmp_num_bytes];
     fread(bmp, 1, bmp_num_bytes, f);
 
+    // Create the DF bitmap.
+    full_fnt->bmp = BitmapCreate(16 * fnt->max_width, 14 * fnt->pix_height);
+    BitmapClear(full_fnt->bmp, g_colourBlack);
     int num_chars = fnt->last_char - fnt->first_char + 1;
     int num_columns = (fnt->max_width + 7) / 8;
     int num_bytes_per_glyph = num_columns * fnt->pix_height;
@@ -210,7 +214,7 @@ FullFnt *ReadFntResourceItem(FILE *f, int block_size) {
                     int the_byte = glyph[y];
                     int bit_mask = 0x80 >> (x % 8);
                     if (the_byte & bit_mask) {
-                        PutPix(g_window->bmp, x0 + x, y0 + y, g_colourWhite);
+                        PutPix(full_fnt->bmp, x0 + x, y0 + y, g_colourWhite);
                     }
                 }
             }
@@ -262,6 +266,7 @@ int main() {
     u16 alignment_shift_amount; fread(&alignment_shift_amount, 1, sizeof(u16), f);
     int block_size = 1 << alignment_shift_amount;
 
+    FullFnt *all_fnts[16] = { NULL };
     while (1) {
         //printf("\nResource block offset 0x%x. ", f.offset);
         ResourceTableBlock rtblock; fread(&rtblock, 1, sizeof(ResourceTableBlock), f);
@@ -272,11 +277,12 @@ int main() {
         }
         else if (rtblock.type_id == 0x8008) {
             int next_block_offset = ftell(f) + sizeof(ResourceTableItem)* rtblock.num_of_this_type;
-
-            for (int i = 0; i < 1; i++) {
-                BitmapClear(g_window->bmp, g_colourBlack);
-//            for (int i = 0; i < rtblock.num_of_this_type; i++) {
-                ReadFntResourceItem(f, block_size);
+    
+            int x = 0;
+            for (int i = 0; i < rtblock.num_of_this_type; i++) {
+                all_fnts[i] = ReadFntResourceItem(f, block_size);
+                QuickBlit(g_window->bmp, x, 0, all_fnts[i]->bmp);
+                x += all_fnts[i]->bmp->width + 10;
             }
 
             break;
