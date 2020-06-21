@@ -228,7 +228,7 @@ FullFnt *ReadFntResourceItem(FILE *f, int block_size) {
 
 
 int main() {
-    CreateWin(800, 600, WT_WINDOWED, ".FON Converter");
+    CreateWin(1400, 800, WT_WINDOWED, ".FON Converter");
     BitmapClear(g_window->bmp, g_colourBlack);
 
     char const *path = "h:/arcs/fonts/myfonts/trowel_variable2.fon";
@@ -281,8 +281,8 @@ int main() {
             int x = 0;
             for (int i = 0; i < rtblock.num_of_this_type; i++) {
                 all_fnts[i] = ReadFntResourceItem(f, block_size);
-                QuickBlit(g_window->bmp, x, 0, all_fnts[i]->bmp);
-                x += all_fnts[i]->bmp->width + 10;
+                ScaleUpBlit(g_window->bmp, x, 0, 2, all_fnts[i]->bmp);
+                x += (all_fnts[i]->bmp->width + 10);
             }
 
             break;
