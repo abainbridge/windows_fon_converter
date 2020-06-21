@@ -184,7 +184,7 @@ FullFnt *ReadFntResourceItem(FILE *f, int block_size) {
     // Read the glyph table.
     const int glyph_table_size = fnt->last_char - fnt->first_char + 2;
     full_fnt->glyph_table = new _Glyph[fnt->last_char - fnt->first_char + 2];
-    fread(full_fnt->glyph_table, 1, sizeof(glyph_table_size), f);
+    fread(full_fnt->glyph_table, 1, glyph_table_size * sizeof(_Glyph), f);
 
     // Read the name.
     fseek(f, fnt_data_offset + fnt->name_offset, SEEK_SET);
@@ -199,17 +199,15 @@ FullFnt *ReadFntResourceItem(FILE *f, int block_size) {
     full_fnt->bmp = BitmapCreate(16 * fnt->max_width, 14 * fnt->pix_height);
     BitmapClear(full_fnt->bmp, g_colourBlack);
     int num_chars = fnt->last_char - fnt->first_char + 1;
-    int num_columns = (fnt->max_width + 7) / 8;
-    int num_bytes_per_glyph = num_columns * fnt->pix_height;
     for (int i = 0; i < num_chars; i++) {
+        int num_columns = (full_fnt->glyph_table[i].pix_width + 7) / 8;
         for (int column = 0; column < num_columns; column++) {
             int x0 = (i % 16) * fnt->max_width + column * 8;
             int y0 = (i / 16) * fnt->pix_height;
-            int bmp_offset = i * num_bytes_per_glyph + column * fnt->pix_height;
-            int column_pixel_width = 8;// fnt->pix_width - column * 8;
-            u8 *glyph = bmp + bmp_offset;
+            int bmp_offset = full_fnt->glyph_table[i].bitmap_offset + fnt->pix_height * column;
+            u8 *glyph = (u8*)fnt + glyph_table_size + 37 + bmp_offset;
             for (int y = 0; y < fnt->pix_height; y++) {
-                for (int x = 0; x < column_pixel_width; x++) {
+                for (int x = 0; x < 8; x++) {
                     int the_byte = glyph[y];
                     int bit_mask = 0x80 >> (x % 8);
                     if (the_byte & bit_mask) {
@@ -217,6 +215,13 @@ FullFnt *ReadFntResourceItem(FILE *f, int block_size) {
                     }
                 }
             }
+        }
+
+        int glyph_width = full_fnt->glyph_table[i].pix_width;
+        for (int j = glyph_width; j < full_fnt->hdr.max_width; j++) {
+            int x = (i % 16) * fnt->max_width + j;
+            int y = (i / 16) * fnt->pix_height;
+            VLine(full_fnt->bmp, x, y, fnt->pix_height, Colour(244, 0, 0));
         }
     }
 
@@ -246,7 +251,8 @@ int main() {
     CreateWin(1400, 800, WT_WINDOWED, ".FON Converter");
     BitmapClear(g_window->bmp, g_colourBlack);
 
-    char const *path = "h:/arcs/fonts/myfonts/trowel_variable2.fon";
+    char const *path = "h:/arcs/fonts/myfonts/trowel_variable.fon";
+//    char const *path = "h:/arcs/fonts/myfonts/trowel2.fon";
     //char const *path = "h:/arcs/fonts/coure.fon";
     FILE *f = fopen(path, "rb");
     ReleaseAssert(f, "Couldn't open file '%s'", path);
