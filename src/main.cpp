@@ -187,7 +187,6 @@ FullFnt *ReadFntResourceItem(FILE *f, int block_size) {
     fread(full_fnt->glyph_table, 1, sizeof(glyph_table_size), f);
 
     // Read the name.
-    int pos = ftell(f);
     fseek(f, fnt_data_offset + fnt->name_offset, SEEK_SET);
     fread(full_fnt->name, 1, sizeof(full_fnt->name), f);
 
@@ -224,6 +223,22 @@ FullFnt *ReadFntResourceItem(FILE *f, int block_size) {
     fseek(f, next_item_offset, SEEK_SET);
 
     return full_fnt;
+}
+
+
+void WriteDfbfFile(const char *filename, FullFnt *all_fnts, int num_fnts) {
+    FILE *o = fopen(filename, "wb");
+    ReleaseAssert(o, "Couldn't create file '%s'", filename);
+
+    char version = 0;
+    fprintf(o, "dfbf%c%c", version, num_fnts);
+
+    for (int i = 0; i < num_fnts; i++) {
+        fputc(all_fnts[i].hdr.max_width, o);
+        fputc(all_fnts[i].hdr.pix_height, o);
+        int is_fixed = 1;
+        fputc(is_fixed, o);
+    }
 }
 
 
