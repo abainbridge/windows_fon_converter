@@ -178,7 +178,7 @@ FullFnt *ReadFntResourceItem(FILE *f, int block_size) {
         fnt->version);
     
     int num_glyphs = fnt->last_char - fnt->first_char + 1;
-    int bytes_per_row = ((fnt->max_width + 8) / 8) * num_glyphs - 1;
+    int bytes_per_row = ((fnt->max_width + 8) / 8) * num_glyphs;
     int bmp_num_bytes = bytes_per_row * fnt->pix_height;
 
     // Read the glyph table.
@@ -205,7 +205,7 @@ FullFnt *ReadFntResourceItem(FILE *f, int block_size) {
             int x0 = (i % 16) * fnt->max_width + column * 8;
             int y0 = (i / 16) * fnt->pix_height;
             int bmp_offset = full_fnt->glyph_table[i].bitmap_offset + fnt->pix_height * column;
-            u8 *glyph = (u8*)fnt + glyph_table_size + 37 + bmp_offset;
+            u8 *glyph = bmp + bmp_offset - 1018;
             for (int y = 0; y < fnt->pix_height; y++) {
                 for (int x = 0; x < 8; x++) {
                     int the_byte = glyph[y];
