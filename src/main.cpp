@@ -231,18 +231,107 @@ FullFnt *ReadFntResourceItem(FILE *f, int block_size) {
 }
 
 
-void WriteDfbfFile(const char *filename, FullFnt *all_fnts, int num_fnts) {
-    FILE *o = fopen(filename, "wb");
-    ReleaseAssert(o, "Couldn't create file '%s'", filename);
+void DoUpPrediction(DfBitmap *bmp) {
+    for (int y = bmp->height - 1; y > 0; y--) {
+        for (int x = 0; x < bmp->width; x++) {
+            DfColour prevColour = GetPix(bmp, x, y - 1);
+            DfColour colour = GetPix(bmp, x, y);
+            if (prevColour.c == colour.c) {
+                PutPix(bmp, x, y, g_colourBlack);
+            }
+            else {
+                PutPix(bmp, x, y, g_colourWhite);
+            }
 
-    char version = 0;
-    fprintf(o, "dfbf%c%c", version, num_fnts);
+            prevColour = colour;
+        }
+    }
+}
 
-    for (int i = 0; i < num_fnts; i++) {
-        fputc(all_fnts[i].hdr.max_width, o);
-        fputc(all_fnts[i].hdr.pix_height, o);
-        int is_fixed = 1;
-        fputc(is_fixed, o);
+
+int rle_len = 0;
+void OutputNibble(FILE *f, int val, u8 *output_byte, int *hi_nibble_next) {
+    if (*hi_nibble_next) {
+        *output_byte |= val << 4;
+        fputc(*output_byte, f);
+        *output_byte = 0;
+    }
+    else {
+        *output_byte |= val;
+    }
+
+    *hi_nibble_next = !*hi_nibble_next;
+    rle_len += 4;
+}
+
+
+void CreateCFile(FullFnt **all_fnts, int num_fnts) {
+    FILE *f = fopen("foo.h", "w");
+    ReleaseAssert(f, "Couldn't create output file");
+
+    for (int i = 3; i < num_fnts; i++) {
+        FullFnt *fnt = all_fnts[i];
+        fputc(fnt->hdr.max_width, f);
+        fputc(fnt->hdr.pix_height, f);
+
+        int flags = 0;
+        if (fnt->hdr.pix_width == 0) {
+            flags |= 1;
+        }
+        fputc(flags, f);
+
+        // If fnt is variable width, write the glyph widths table.
+        if (fnt->hdr.pix_width == 0) {
+            for (int c = 0; c < 224; c++) {
+                fputc(fnt->glyph_table[c].pix_width, f);
+            }
+        }
+
+        DoUpPrediction(fnt->bmp);
+
+        // Write the RLE encoded bitmap
+        int run_len = 0;
+        int hi_nibble_next = 0;
+        u8 output_byte = 0;
+        DfColour prev_pix = g_colourBlack;
+        for (int y = 0; y < fnt->bmp->height; y++) {
+            for (int x = 0; x < fnt->bmp->width; x++) {
+                DfColour pix = GetPix(fnt->bmp, x, y);
+                if (pix.c != prev_pix.c) {
+                    if (run_len < 15) {
+                        OutputNibble(f, run_len, &output_byte, &hi_nibble_next);
+                    }
+                    else if (run_len < 255) {
+                        OutputNibble(f, 15, &output_byte, &hi_nibble_next); // 15 is the escape char, meaning an 8-bit length follows.
+                        OutputNibble(f, run_len & 0xf, &output_byte, &hi_nibble_next);
+                        OutputNibble(f, run_len >> 4, &output_byte, &hi_nibble_next);
+                    }
+                    else {
+                        OutputNibble(f, 15, &output_byte, &hi_nibble_next); // 15 is the escape char, meaning an 8-bit length follows.
+                        
+                        // 0xff is the 8-bit escape character, meaning a 24-bit length follows.
+                        OutputNibble(f, 0xf, &output_byte, &hi_nibble_next);
+                        OutputNibble(f, 0xf, &output_byte, &hi_nibble_next);
+
+                        OutputNibble(f, (run_len >> 0) & 0xf, &output_byte, &hi_nibble_next);
+                        OutputNibble(f, (run_len >> 4) & 0xf, &output_byte, &hi_nibble_next);
+                        OutputNibble(f, (run_len >> 8) & 0xf, &output_byte, &hi_nibble_next);
+                        OutputNibble(f, (run_len >> 12) & 0xf, &output_byte, &hi_nibble_next);
+                        OutputNibble(f, (run_len >> 16) & 0xf, &output_byte, &hi_nibble_next);
+                        OutputNibble(f, (run_len >> 20) & 0xf, &output_byte, &hi_nibble_next);
+                    }
+
+                    run_len = 0;
+                }
+
+                run_len++;
+                prev_pix = pix;
+            }
+        }
+
+        if (hi_nibble_next) {
+            OutputNibble(f, 0, &output_byte, &hi_nibble_next);
+        }
     }
 }
 
@@ -251,9 +340,9 @@ int main() {
     CreateWin(1400, 800, WT_WINDOWED, ".FON Converter");
     BitmapClear(g_window->bmp, g_colourBlack);
 
-    char const *path = "h:/arcs/fonts/myfonts/trowel_variable.fon";
-//    char const *path = "h:/arcs/fonts/myfonts/trowel2.fon";
-    //char const *path = "h:/arcs/fonts/coure.fon";
+//    char const *path = "h:/arcs/fonts/myfonts/trowel_variable.fon";
+    char const *path = "h:/arcs/fonts/myfonts/trowel3.fon";
+//    char const *path = "h:/arcs/fonts/coure.fon";
     FILE *f = fopen(path, "rb");
     ReleaseAssert(f, "Couldn't open file '%s'", path);
 
@@ -288,6 +377,7 @@ int main() {
     int block_size = 1 << alignment_shift_amount;
 
     FullFnt *all_fnts[16] = { NULL };
+    int num_fnts = 0;
     while (1) {
         //printf("\nResource block offset 0x%x. ", f.offset);
         ResourceTableBlock rtblock; fread(&rtblock, 1, sizeof(ResourceTableBlock), f);
@@ -302,6 +392,11 @@ int main() {
             int x = 0;
             for (int i = 0; i < rtblock.num_of_this_type; i++) {
                 all_fnts[i] = ReadFntResourceItem(f, block_size);
+                num_fnts++;
+
+                if (i == 2) {
+                    DoUpPrediction(all_fnts[i]->bmp);
+                }
                 ScaleUpBlit(g_window->bmp, x, 0, 2, all_fnts[i]->bmp);
                 x += (all_fnts[i]->bmp->width + 10);
             }
@@ -320,6 +415,8 @@ int main() {
             fseek(f, next_block_offset, SEEK_SET);
         }
     }
+
+//    CreateCFile(all_fnts, num_fnts);
 
     while (!g_window->windowClosed && !g_input.keyDowns[KEY_ESC])
     {
