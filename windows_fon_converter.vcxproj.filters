@@ -64,6 +64,7 @@
     <ClInclude Include="..\deadfrog-lib\src\df_window.h">
       <Filter>deadfrog-lib</Filter>
     </ClInclude>
+    <ClInclude Include="src\windows_fnt.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="deadfrog-lib">

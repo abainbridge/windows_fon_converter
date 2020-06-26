@@ -42,6 +42,7 @@
     <ClInclude Include="..\deadfrog-lib\src\df_sized_glyph.h" />
     <ClInclude Include="..\deadfrog-lib\src\df_time.h" />
     <ClInclude Include="..\deadfrog-lib\src\df_window.h" />
+    <ClInclude Include="src\windows_fnt.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{BFF688E8-18DB-4AA7-8571-C10CD56312D8}</ProjectGuid>
