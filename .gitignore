@@ -30,3 +30,8 @@
 *.exe
 *.out
 *.app
+/Release
+/Debug
+/windows_fon_converter.v12.suo
+/windows_fon_converter.opensdf
+/windows_fon_converter.sdf
