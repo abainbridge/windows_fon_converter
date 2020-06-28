@@ -15,6 +15,78 @@ struct FullFnt {
 };
 
 
+struct MemBuf {
+    int max_len;
+    u8 *data;
+    int len;
+    int hi_nibble_next;
+    int output_byte;
+
+    MemBuf() {
+        max_len = 1000 * 1000;
+        data = new u8[max_len];
+        len = 0;
+        hi_nibble_next = 0;
+        output_byte = 0;
+    }
+
+    void PushByte(int val) {
+        ReleaseAssert(hi_nibble_next == 0, "Attempt to write a byte when a nibble was buffered");
+        ReleaseAssert(len < max_len, "MemBuf full");
+        data[len] = val;
+        len++;
+    }
+
+    void PushNibble(int val) {
+        if (hi_nibble_next) {
+            output_byte |= val << 4;
+            hi_nibble_next = 0;
+            PushByte(output_byte);
+            output_byte = 0;
+        }
+        else {
+            hi_nibble_next = 1;
+            output_byte |= val;
+        }
+    }
+
+    void WriteToBinFile(const char *filename) {
+        if (hi_nibble_next) {
+            PushNibble(0);
+        }
+
+        FILE *f = fopen(filename, "wb");
+        ReleaseAssert(f, "Couldn't create output file '%s'");
+        ReleaseAssert(hi_nibble_next == 0, "Attempt to write a byte when a nibble was buffered 2");
+        int bytes_written = fwrite(data, 1, len, f);
+        ReleaseAssert(bytes_written == len, "Couldn't write to output file");
+        fclose(f);
+    }
+
+    void WriteToCFile(const char *filename) {
+        if (hi_nibble_next) {
+            PushNibble(0);
+        }
+
+        FILE *f = fopen(filename, "w");
+        ReleaseAssert(f, "Couldn't create output file '%s'");
+        ReleaseAssert(hi_nibble_next == 0, "Attempt to write a byte when a nibble was buffered 2");
+        
+        fprintf(f, "unsigned font_name[] = {\n    ");
+        u32 *data32 = (u32*)data;
+        for (int i = 0; i < len/4; i++) {
+            fprintf(f, "0x%08x, ", data32[i]);
+            if (i % 8 == 7) {
+                fprintf(f, "\n    ");
+            }
+        }
+        fprintf(f, "\n};\n");
+
+        fclose(f);
+    }
+};
+
+
 // FNT resource format explanation https://jeffpar.github.io/kbarchive/kb/065/Q65123/
 FullFnt *ReadFntResourceItem(FILE *f, int block_size) {  
     ResourceTableItem rt_item; fread(&rt_item, 1, sizeof(ResourceTableItem), f);
@@ -103,88 +175,63 @@ void DoUpPrediction(DfBitmap *bmp) {
 }
 
 
-int rle_len = 0;
-void OutputNibble(FILE *f, int val, u8 *output_byte, int *hi_nibble_next) {
-    if (*hi_nibble_next) {
-        *output_byte |= val << 4;
-        fputc(*output_byte, f);
-        *output_byte = 0;
+void WriteDfbfToMemBuf(MemBuf *buf, FullFnt *fnt) {
+    buf->PushByte(fnt->hdr.max_width);
+    buf->PushByte(fnt->hdr.pix_height);
+
+    int flags = 0;
+    if (fnt->hdr.pix_width == 0) {
+        flags |= 1;
     }
-    else {
-        *output_byte |= val;
+    buf->PushByte(flags);
+
+    // If fnt is variable width, write the glyph widths table.
+    if (fnt->hdr.pix_width == 0) {
+        for (int c = 0; c < 224; c++) {
+            buf->PushByte(fnt->glyph_table[c].pix_width);
+        }
     }
 
-    *hi_nibble_next = !*hi_nibble_next;
-    rle_len += 4;
-}
+    DoUpPrediction(fnt->bmp);
 
-
-void CreateCFile(FullFnt **all_fnts, int num_fnts) {
-    FILE *f = fopen("foo.h", "w");
-    ReleaseAssert(f, "Couldn't create output file");
-
-    for (int i = 3; i < num_fnts; i++) {
-        FullFnt *fnt = all_fnts[i];
-        fputc(fnt->hdr.max_width, f);
-        fputc(fnt->hdr.pix_height, f);
-
-        int flags = 0;
-        if (fnt->hdr.pix_width == 0) {
-            flags |= 1;
-        }
-        fputc(flags, f);
-
-        // If fnt is variable width, write the glyph widths table.
-        if (fnt->hdr.pix_width == 0) {
-            for (int c = 0; c < 224; c++) {
-                fputc(fnt->glyph_table[c].pix_width, f);
-            }
-        }
-
-        DoUpPrediction(fnt->bmp);
-
-        // Write the RLE encoded bitmap
-        int run_len = 0;
-        int hi_nibble_next = 0;
-        u8 output_byte = 0;
-        DfColour prev_pix = g_colourBlack;
-        for (int y = 0; y < fnt->bmp->height; y++) {
-            for (int x = 0; x < fnt->bmp->width; x++) {
-                DfColour pix = GetPix(fnt->bmp, x, y);
-                if (pix.c != prev_pix.c) {
-                    if (run_len < 15) {
-                        OutputNibble(f, run_len, &output_byte, &hi_nibble_next);
+    // Write the RLE encoded bitmap
+    int run_len = 0;
+    DfColour prev_pix = g_colourBlack;
+    for (int y = 0; y < fnt->bmp->height; y++) {
+        for (int x = 0; x < fnt->bmp->width; x++) {
+            DfColour pix = GetPix(fnt->bmp, x, y);
+            if (pix.c != prev_pix.c) {
+                while (run_len > 0) {
+                    if (run_len >= 16 || run_len == 0) {
+                        int run_len_to_write = run_len;
+                        if (run_len_to_write > 255) {
+                            run_len_to_write = 255;
+                        }
+                        buf->PushNibble(0); // 0 is the escape char, meaning an 8-bit length follows.
+                        buf->PushNibble(run_len_to_write & 0xf);
+                        buf->PushNibble(run_len_to_write >> 4);
+                        if (run_len > 255) {
+							// If run_len is > 255, then there is no way to encode it directly.
+							// Instead we will have to ouput multiple runs that add up to the
+							// required total. But adjacent runs must be of opposite "values".
+							// The solution to that is to create zero length runs between them.
+							// We can only encode zero length runs using an escape too. So,
+							// output a zero lengthed run now.
+                            buf->PushNibble(0);
+                            buf->PushNibble(0);
+                            buf->PushNibble(0);
+                        }
+                        run_len -= run_len_to_write;
                     }
-                    else if (run_len < 255) {
-                        OutputNibble(f, 15, &output_byte, &hi_nibble_next); // 15 is the escape char, meaning an 8-bit length follows.
-                        OutputNibble(f, run_len & 0xf, &output_byte, &hi_nibble_next);
-                        OutputNibble(f, run_len >> 4, &output_byte, &hi_nibble_next);
+                    else if (run_len < 16) {
+                        buf->PushNibble(run_len);
+                        run_len = 0;
                     }
-                    else {
-                        OutputNibble(f, 15, &output_byte, &hi_nibble_next); // 15 is the escape char, meaning an 8-bit length follows.
-                        
-                        // 0xff is the 8-bit escape character, meaning a 24-bit length follows.
-                        OutputNibble(f, 0xf, &output_byte, &hi_nibble_next);
-                        OutputNibble(f, 0xf, &output_byte, &hi_nibble_next);
-
-                        OutputNibble(f, (run_len >> 0) & 0xf, &output_byte, &hi_nibble_next);
-                        OutputNibble(f, (run_len >> 4) & 0xf, &output_byte, &hi_nibble_next);
-                        OutputNibble(f, (run_len >> 8) & 0xf, &output_byte, &hi_nibble_next);
-                        OutputNibble(f, (run_len >> 12) & 0xf, &output_byte, &hi_nibble_next);
-                        OutputNibble(f, (run_len >> 16) & 0xf, &output_byte, &hi_nibble_next);
-                        OutputNibble(f, (run_len >> 20) & 0xf, &output_byte, &hi_nibble_next);
-                    }
-
-                    run_len = 0;
                 }
-
-                run_len++;
-                prev_pix = pix;
             }
-        }
 
-        if (hi_nibble_next) {
-            OutputNibble(f, 0, &output_byte, &hi_nibble_next);
+            run_len++;
+            prev_pix = pix;
         }
     }
 }
@@ -248,9 +295,7 @@ int main() {
                 all_fnts[i] = ReadFntResourceItem(f, block_size);
                 num_fnts++;
 
-                if (i == 2) {
-                    DoUpPrediction(all_fnts[i]->bmp);
-                }
+//                DoUpPrediction(all_fnts[i]->bmp);
                 ScaleUpBlit(g_window->bmp, x, 0, 2, all_fnts[i]->bmp);
                 x += (all_fnts[i]->bmp->width + 10);
             }
@@ -270,7 +315,9 @@ int main() {
         }
     }
 
-//    CreateCFile(all_fnts, num_fnts);
+    MemBuf buf;
+    WriteDfbfToMemBuf(&buf, all_fnts[0]);
+    buf.WriteToCFile("ooo_look.h");
 
     while (!g_window->windowClosed && !g_input.keyDowns[KEY_ESC])
     {
