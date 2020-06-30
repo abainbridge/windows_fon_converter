@@ -5,6 +5,7 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <string.h>
 
 
 struct FullFnt {
@@ -50,29 +51,24 @@ struct MemBuf {
         }
     }
 
-    void WriteToBinFile(const char *filename) {
+    void WriteToBinFile(FILE *f) {
         if (hi_nibble_next) {
             PushNibble(0);
         }
 
-        FILE *f = fopen(filename, "wb");
-        ReleaseAssert(f, "Couldn't create output file '%s'");
         ReleaseAssert(hi_nibble_next == 0, "Attempt to write a byte when a nibble was buffered 2");
         int bytes_written = fwrite(data, 1, len, f);
         ReleaseAssert(bytes_written == len, "Couldn't write to output file");
-        fclose(f);
     }
 
-    void WriteToCFile(const char *filename) {
+    void WriteToCFile(FILE *f, const char *font_name, int font_width, int font_height) {
         if (hi_nibble_next) {
             PushNibble(0);
         }
 
-        FILE *f = fopen(filename, "w");
-        ReleaseAssert(f, "Couldn't create output file '%s'");
         ReleaseAssert(hi_nibble_next == 0, "Attempt to write a byte when a nibble was buffered 2");
         
-        fprintf(f, "unsigned font_name[] = {\n    ");
+        fprintf(f, "unsigned %s_%ix%i[] = {\n    ", font_name, font_width, font_height);
         u32 *data32 = (u32*)data;
         for (int i = 0; i < len/4; i++) {
             fprintf(f, "0x%08x, ", data32[i]);
@@ -80,9 +76,7 @@ struct MemBuf {
                 fprintf(f, "\n    ");
             }
         }
-        fprintf(f, "\n};\n");
-
-        fclose(f);
+        fprintf(f, "\n};\n\n");
     }
 };
 
@@ -237,6 +231,18 @@ void WriteDfbfToMemBuf(MemBuf *buf, FullFnt *fnt) {
 }
 
 
+char *GetNameFromPath(const char *path) {
+    const char *dot = strrchr(path, '.');
+    const char *slash = strrchr(path, '/');
+    ReleaseAssert(dot && slash && slash < dot, "Couldn't extract font name from input path of '%s'", path);
+    size_t name_len = dot - slash - 1;
+    char *rv = new char[name_len + 1];
+    memcpy(rv, slash + 1, name_len);
+    rv[name_len] = '\0';
+    return rv;
+}
+
+
 int main() {
     CreateWin(1400, 800, WT_WINDOWED, ".FON Converter");
     BitmapClear(g_window->bmp, g_colourBlack);
@@ -314,10 +320,30 @@ int main() {
             fseek(f, next_block_offset, SEEK_SET);
         }
     }
+    fclose(f);
 
-    MemBuf buf;
-    WriteDfbfToMemBuf(&buf, all_fnts[0]);
-    buf.WriteToCFile("ooo_look.h");
+    {
+        char *fnt_name = GetNameFromPath(path);
+        char *c_file_name = new char[strlen(path) + 2];
+        strcpy(c_file_name, fnt_name);
+        strcat(c_file_name, ".h");
+        char *bin_file_name = new char[strlen(path) + 6];
+        strcpy(bin_file_name, fnt_name);
+        strcat(bin_file_name, ".dfbf");
+
+        FILE *c_file = fopen(c_file_name, "w");
+        ReleaseAssert(c_file, "Couldn't create output file '%s'", c_file_name);
+        FILE *bin_file = fopen(bin_file_name, "wb");
+        ReleaseAssert(bin_file, "Couldn't create output file '%s'", bin_file_name);
+
+        for (int i = 0; i < num_fnts; i++) {
+            MemBuf buf;
+            FullFnt *fnt = all_fnts[i];
+            WriteDfbfToMemBuf(&buf, fnt);
+            buf.WriteToCFile(c_file, fnt_name, fnt->hdr.max_width, fnt->hdr.pix_height);
+            buf.WriteToBinFile(bin_file);
+        }
+    }
 
     while (!g_window->windowClosed && !g_input.keyDowns[KEY_ESC])
     {
