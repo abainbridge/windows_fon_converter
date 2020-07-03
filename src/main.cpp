@@ -68,7 +68,7 @@ struct MemBuf {
 
         ReleaseAssert(hi_nibble_next == 0, "Attempt to write a byte when a nibble was buffered 2");
         
-        fprintf(f, "unsigned %s_%ix%i[] = {\n    ", font_name, font_width, font_height);
+        fprintf(f, "static unsigned %s_%ix%i[] = {\n    ", font_name, font_width, font_height);
         u32 *data32 = (u32*)data;
         for (int i = 0; i < len/4; i++) {
             fprintf(f, "0x%08x, ", data32[i]);
@@ -336,11 +336,23 @@ int main() {
         FILE *bin_file = fopen(bin_file_name, "wb");
         ReleaseAssert(bin_file, "Couldn't create output file '%s'", bin_file_name);
 
+        char version = 0;
+        fprintf(bin_file, "dfbf%c%c", version, num_fnts);
+        for (int i = 0; i < num_fnts; i++) {
+            u32 dummy_offset = 0;
+            fwrite(&dummy_offset, 1, 4, bin_file);
+        }
+
         for (int i = 0; i < num_fnts; i++) {
             MemBuf buf;
             FullFnt *fnt = all_fnts[i];
             WriteDfbfToMemBuf(&buf, fnt);
             buf.WriteToCFile(c_file, fnt_name, fnt->hdr.max_width, fnt->hdr.pix_height);
+            
+            u32 pos = ftell(bin_file);
+            fseek(bin_file, 6 + i * 4, SEEK_SET);
+            fwrite(&pos, 1, 4, bin_file);
+            fseek(bin_file, pos, SEEK_SET);
             buf.WriteToBinFile(bin_file);
         }
     }
