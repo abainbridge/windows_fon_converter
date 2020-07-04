@@ -8,6 +8,9 @@
 #include <string.h>
 
 
+DfColour g_colourRed = Colour(244, 0, 0);
+
+
 struct FullFnt {
     FntHeader hdr;
     _Glyph *glyph_table;           // Num entries is hdr.last_char - hdr.first_char + 2.
@@ -141,7 +144,7 @@ FullFnt *ReadFntResourceItem(FILE *f, int block_size) {
         for (int j = glyph_width; j < full_fnt->hdr.max_width; j++) {
             int x = (i % 16) * fnt->max_width + j;
             int y = (i / 16) * fnt->pix_height;
-            VLine(full_fnt->bmp, x, y, fnt->pix_height, Colour(244, 0, 0));
+            VLine(full_fnt->bmp, x, y, fnt->pix_height, g_colourRed);
         }
     }
 
@@ -150,6 +153,17 @@ FullFnt *ReadFntResourceItem(FILE *f, int block_size) {
     return full_fnt;
 }
 
+
+void RemoveRed(DfBitmap *bmp) {
+    for (int y = 0; y < bmp->height; y++) {
+        for (int x = 0; x < bmp->width; x++) {
+            DfColour c = GetPix(bmp, x, y);
+            if (c.c == g_colourRed.c) {
+                PutPix(bmp, x, y, g_colourBlack);
+            }
+        }
+    }
+}
 
 void DoUpPrediction(DfBitmap *bmp) {
     for (int y = bmp->height - 1; y > 0; y--) {
@@ -186,6 +200,7 @@ void WriteDfbfToMemBuf(MemBuf *buf, FullFnt *fnt) {
         }
     }
 
+    RemoveRed(fnt->bmp);
     DoUpPrediction(fnt->bmp);
 
     // Write the RLE encoded bitmap
@@ -247,9 +262,8 @@ int main() {
     CreateWin(1400, 800, WT_WINDOWED, ".FON Converter");
     BitmapClear(g_window->bmp, g_colourBlack);
 
-//    char const *path = "h:/arcs/fonts/myfonts/trowel_variable.fon";
-    char const *path = "h:/arcs/fonts/myfonts/trowel3.fon";
-//    char const *path = "h:/arcs/fonts/coure.fon";
+    char const *path = "h:/arcs/fonts/myfonts/deadfrog_prop.fon";
+//    char const *path = "h:/arcs/fonts/myfonts/deadfrog_mono.fon";
     FILE *f = fopen(path, "rb");
     ReleaseAssert(f, "Couldn't open file '%s'", path);
 
