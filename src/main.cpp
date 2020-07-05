@@ -29,6 +29,7 @@ struct MemBuf {
     MemBuf() {
         max_len = 1000 * 1000;
         data = new u8[max_len];
+        memset(data, 0, max_len);
         len = 0;
         hi_nibble_next = 0;
         output_byte = 0;
@@ -73,7 +74,8 @@ struct MemBuf {
         
         fprintf(f, "static unsigned %s_%ix%i[] = {\n    ", font_name, font_width, font_height);
         u32 *data32 = (u32*)data;
-        for (int i = 0; i < len/4; i++) {
+        int num_words = (len + 3) / 4;
+        for (int i = 0; i < num_words; i++) {
             fprintf(f, "0x%08x, ", data32[i]);
             if (i % 8 == 7) {
                 fprintf(f, "\n    ");
