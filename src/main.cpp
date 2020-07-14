@@ -72,7 +72,7 @@ struct MemBuf {
 
         ReleaseAssert(hi_nibble_next == 0, "Attempt to write a byte when a nibble was buffered 2");
         
-        fprintf(f, "static unsigned %s_%ix%i[] = {\n    ", font_name, font_width, font_height);
+        fprintf(f, "NO_UNUSED_WARNING static unsigned %s_%ix%i[] = {\n    ", font_name, font_width, font_height);
         u32 *data32 = (u32*)data;
         int num_words = (len + 3) / 4;
         for (int i = 0; i < num_words; i++) {
@@ -352,6 +352,15 @@ int main() {
         FILE *bin_file = fopen(bin_file_name, "wb");
         ReleaseAssert(bin_file, "Couldn't create output file '%s'", bin_file_name);
 
+        // Write header into C file.
+        fputs("#ifdef __GNUC__\n"
+              "#define NO_UNUSED_WARNING __attribute__ ((unused))\n"
+              "#else\n"
+              "#define NO_UNUSED_WARNING\n"
+              "#endif\n"
+              "\n", c_file);
+
+        // Write header into bin file.
         char version = 0;
         fprintf(bin_file, "dfbf%c%c", version, num_fnts);
         for (int i = 0; i < num_fnts; i++) {
