@@ -260,12 +260,22 @@ char *GetNameFromPath(const char *path) {
 }
 
 
-int main() {
+int main(int argc, char *argv[]) {
+    char const *path = NULL;
+    // char const *path = "h:/arcs/fonts/myfonts/deadfrog_prop.fon";
+    // char const *path = "h:/arcs/fonts/myfonts/deadfrog_mono.fon";
+
+    if (!path && argc != 2) {
+        printf("Usage: %s <your.fon>\n", argv[0]);
+        return 0;
+    }
+    else {
+        path = argv[1];
+    }
+
     CreateWin(1400, 800, WT_WINDOWED, ".FON Converter");
     BitmapClear(g_window->bmp, g_colourBlack);
 
-    char const *path = "h:/arcs/fonts/myfonts/deadfrog_prop.fon";
-//    char const *path = "h:/arcs/fonts/myfonts/deadfrog_mono.fon";
     FILE *f = fopen(path, "rb");
     ReleaseAssert(f, "Couldn't open file '%s'", path);
 
