@@ -262,15 +262,16 @@ char *GetNameFromPath(const char *path) {
 
 int main(int argc, char *argv[]) {
     char const *path = NULL;
-    // char const *path = "h:/arcs/fonts/myfonts/deadfrog_prop.fon";
-    // char const *path = "h:/arcs/fonts/myfonts/deadfrog_mono.fon";
+    //path = "c:/coding/deadfrog-lib/src/fonts/df_prop.fon";
 
-    if (!path && argc != 2) {
-        printf("Usage: %s <your.fon>\n", argv[0]);
-        return 0;
-    }
-    else {
-        path = argv[1];
+    if (!path) {
+        if (argc != 2) {
+            printf("Usage: %s <your.fon>\n", argv[0]);
+            return 0;
+        }
+        else {
+            path = argv[1];
+        }
     }
 
     g_window = CreateWin(1400, 800, WT_WINDOWED_FIXED, ".FON Converter");
