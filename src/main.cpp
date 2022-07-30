@@ -273,7 +273,7 @@ int main(int argc, char *argv[]) {
         path = argv[1];
     }
 
-    CreateWin(1400, 800, WT_WINDOWED, ".FON Converter");
+    g_window = CreateWin(1400, 800, WT_WINDOWED_FIXED, ".FON Converter");
     BitmapClear(g_window->bmp, g_colourBlack);
 
     FILE *f = fopen(path, "rb");
@@ -392,11 +392,10 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    while (!g_window->windowClosed && !g_input.keyDowns[KEY_ESC])
-    {
-        InputPoll();
+    while (!g_window->windowClosed && !g_window->input.keyDowns[KEY_ESC]) {
+        InputPoll(g_window);
          
-        UpdateWin();
+        UpdateWin(g_window);
         WaitVsync();
     }
 

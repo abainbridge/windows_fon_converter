@@ -17,13 +17,7 @@
     <ClCompile Include="..\deadfrog-lib\src\df_font.cpp">
       <Filter>deadfrog-lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\deadfrog-lib\src\df_master_glyph.cpp">
-      <Filter>deadfrog-lib</Filter>
-    </ClCompile>
     <ClCompile Include="..\deadfrog-lib\src\df_message_dialog.cpp">
-      <Filter>deadfrog-lib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\deadfrog-lib\src\df_sized_glyph.cpp">
       <Filter>deadfrog-lib</Filter>
     </ClCompile>
     <ClCompile Include="..\deadfrog-lib\src\df_time.cpp">
@@ -49,13 +43,7 @@
     <ClInclude Include="..\deadfrog-lib\src\df_font.h">
       <Filter>deadfrog-lib</Filter>
     </ClInclude>
-    <ClInclude Include="..\deadfrog-lib\src\df_master_glyph.h">
-      <Filter>deadfrog-lib</Filter>
-    </ClInclude>
     <ClInclude Include="..\deadfrog-lib\src\df_message_dialog.h">
-      <Filter>deadfrog-lib</Filter>
-    </ClInclude>
-    <ClInclude Include="..\deadfrog-lib\src\df_sized_glyph.h">
       <Filter>deadfrog-lib</Filter>
     </ClInclude>
     <ClInclude Include="..\deadfrog-lib\src\df_time.h">

@@ -24,9 +24,7 @@
     <ClCompile Include="..\deadfrog-lib\src\df_colour.cpp" />
     <ClCompile Include="..\deadfrog-lib\src\df_common.cpp" />
     <ClCompile Include="..\deadfrog-lib\src\df_font.cpp" />
-    <ClCompile Include="..\deadfrog-lib\src\df_master_glyph.cpp" />
     <ClCompile Include="..\deadfrog-lib\src\df_message_dialog.cpp" />
-    <ClCompile Include="..\deadfrog-lib\src\df_sized_glyph.cpp" />
     <ClCompile Include="..\deadfrog-lib\src\df_time.cpp" />
     <ClCompile Include="..\deadfrog-lib\src\df_window.cpp" />
     <ClCompile Include="src\main.cpp" />
@@ -37,9 +35,7 @@
     <ClInclude Include="..\deadfrog-lib\src\df_colour.h" />
     <ClInclude Include="..\deadfrog-lib\src\df_common.h" />
     <ClInclude Include="..\deadfrog-lib\src\df_font.h" />
-    <ClInclude Include="..\deadfrog-lib\src\df_master_glyph.h" />
     <ClInclude Include="..\deadfrog-lib\src\df_message_dialog.h" />
-    <ClInclude Include="..\deadfrog-lib\src\df_sized_glyph.h" />
     <ClInclude Include="..\deadfrog-lib\src\df_time.h" />
     <ClInclude Include="..\deadfrog-lib\src\df_window.h" />
     <ClInclude Include="src\windows_fnt.h" />
