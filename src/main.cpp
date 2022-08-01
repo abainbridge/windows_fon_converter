@@ -4,8 +4,10 @@
 #include "df_window.h"
 
 #include <assert.h>
+#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
+#include <vector>
 
 
 DfColour g_colourRed = Colour(244, 0, 0);
@@ -22,7 +24,7 @@ struct FullFnt {
 struct MemBuf {
     int max_len;
     u8 *data;
-    int len;
+    int data_num_bytes;
     int hi_nibble_next;
     int output_byte;
 
@@ -30,16 +32,16 @@ struct MemBuf {
         max_len = 1000 * 1000;
         data = new u8[max_len];
         memset(data, 0, max_len);
-        len = 0;
+        data_num_bytes = 0;
         hi_nibble_next = 0;
         output_byte = 0;
     }
 
     void PushByte(int val) {
         ReleaseAssert(hi_nibble_next == 0, "Attempt to write a byte when a nibble was buffered");
-        ReleaseAssert(len < max_len, "MemBuf full");
-        data[len] = val;
-        len++;
+        ReleaseAssert(data_num_bytes < max_len, "MemBuf full");
+        data[data_num_bytes] = val;
+        data_num_bytes++;
     }
 
     void PushNibble(int val) {
@@ -61,8 +63,8 @@ struct MemBuf {
         }
 
         ReleaseAssert(hi_nibble_next == 0, "Attempt to write a byte when a nibble was buffered 2");
-        int bytes_written = fwrite(data, 1, len, f);
-        ReleaseAssert(bytes_written == len, "Couldn't write to output file");
+        int bytes_written = fwrite(data, 1, data_num_bytes, f);
+        ReleaseAssert(bytes_written == data_num_bytes, "Couldn't write to output file");
     }
 
     void WriteToCFile(FILE *f, const char *font_name, int font_width, int font_height) {
@@ -74,7 +76,7 @@ struct MemBuf {
         
         fprintf(f, "NO_UNUSED_WARNING static unsigned %s_%ix%i[] = {\n    ", font_name, font_width, font_height);
         u32 *data32 = (u32*)data;
-        int num_words = (len + 3) / 4;
+        int num_words = (data_num_bytes + 3) / 4;
         for (int i = 0; i < num_words; i++) {
             fprintf(f, "0x%08x, ", data32[i]);
             if (i % 8 == 7) {
@@ -379,6 +381,7 @@ int main(int argc, char *argv[]) {
             fwrite(&dummy_offset, 1, 4, bin_file);
         }
 
+        std::vector <unsigned> font_datas_num_bytes;
         for (int i = 0; i < num_fnts; i++) {
             MemBuf buf;
             FullFnt *fnt = all_fnts[i];
@@ -390,7 +393,35 @@ int main(int argc, char *argv[]) {
             fwrite(&pos, 1, 4, bin_file);
             fseek(bin_file, pos, SEEK_SET);
             buf.WriteToBinFile(bin_file);
+
+            font_datas_num_bytes.push_back(buf.data_num_bytes);
         }
+
+        // Write footer into C file.
+        fprintf(c_file, "static const unsigned char %s_sizes[] = { ", fnt_name);
+        for (int i = 0; i < (num_fnts - 1); i++)
+            fprintf(c_file, "%d, ", all_fnts[i]->hdr.pix_height);
+        fprintf(c_file, "%d", all_fnts[num_fnts - 1]->hdr.pix_height);
+        fprintf(c_file, " };\nenum { ");
+        for (char *c = fnt_name; *c; c++) fputc(toupper(*c), c_file);
+        fprintf(c_file, "_NUM_FONTS = %d };\n", num_fnts);
+        fprintf(c_file, "static unsigned *%s_font_datas[] = {\n", fnt_name);
+        for (int i = 0; i < num_fnts; i++) {
+            FullFnt *fnt = all_fnts[i];
+            fprintf(c_file, "    %s_%dx%d", fnt_name, fnt->hdr.max_width, fnt->hdr.pix_height);
+            if (i < (num_fnts - 1)) {
+                fprintf(c_file, ",\n");
+            }
+        };
+        fprintf(c_file, "\n};\n");
+        fprintf(c_file, "static unsigned %s_font_datas_num_bytes[] = {\n", fnt_name);
+        for (int i = 0; i < num_fnts; i++) {
+            fprintf(c_file, "    %d", font_datas_num_bytes[i]);
+            if (i < (num_fnts - 1)) {
+                fprintf(c_file, ",\n");
+            }
+        };
+        fprintf(c_file, "\n};\n");
     }
 
     while (!g_window->windowClosed && !g_window->input.keyDowns[KEY_ESC]) {
