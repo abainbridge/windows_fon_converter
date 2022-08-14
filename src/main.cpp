@@ -74,9 +74,9 @@ struct MemBuf {
 
         ReleaseAssert(hi_nibble_next == 0, "Attempt to write a byte when a nibble was buffered 2");
         
-        fprintf(f, "NO_UNUSED_WARNING static unsigned %s_%ix%i[] = {\n    ", font_name, font_width, font_height);
-        u32 *data32 = (u32*)data;
         int num_words = (data_num_bytes + 3) / 4;
+        fprintf(f, "unsigned const %s_%ix%i[%d] = {\n    ", font_name, font_width, font_height, num_words);
+        u32 *data32 = (u32*)data;
         for (int i = 0; i < num_words; i++) {
             fprintf(f, "0x%08x, ", data32[i]);
             if (i % 8 == 7) {
@@ -225,7 +225,7 @@ void WriteDfbfToMemBuf(MemBuf *buf, FullFnt *fnt) {
                         buf->PushNibble(run_len_to_write >> 4);
                         if (run_len > 255) {
 							// If run_len is > 255, then there is no way to encode it directly.
-							// Instead we will have to ouput multiple runs that add up to the
+							// Instead we will have to output multiple runs that add up to the
 							// required total. But adjacent runs must be of opposite "values".
 							// The solution to that is to create zero length runs between them.
 							// We can only encode zero length runs using an escape too. So,
@@ -353,25 +353,33 @@ int main(int argc, char *argv[]) {
 
     {
         char *fnt_name = GetNameFromPath(path);
-        char *c_file_name = new char[strlen(path) + 2];
-        strcpy(c_file_name, fnt_name);
-        strcat(c_file_name, ".h");
+        char *cpp_file_name = new char[strlen(path) + 2];
+        strcpy(cpp_file_name, fnt_name);
+        strcat(cpp_file_name, ".cpp");
+        char *h_file_name = new char[strlen(path) + 2];
+        strcpy(h_file_name, fnt_name);
+        strcat(h_file_name, ".h");
         char *bin_file_name = new char[strlen(path) + 6];
         strcpy(bin_file_name, fnt_name);
         strcat(bin_file_name, ".dfbf");
 
-        FILE *c_file = fopen(c_file_name, "w");
-        ReleaseAssert(c_file, "Couldn't create output file '%s'", c_file_name);
+        FILE *c_file = fopen(cpp_file_name, "w");
+        ReleaseAssert(c_file, "Couldn't create output file '%s'", cpp_file_name);
+        FILE *h_file = fopen(h_file_name, "w");
+        ReleaseAssert(c_file, "Couldn't create output file '%s'", h_file_name);
         FILE *bin_file = fopen(bin_file_name, "wb");
         ReleaseAssert(bin_file, "Couldn't create output file '%s'", bin_file_name);
 
         // Write header into C file.
-        fputs("#ifdef __GNUC__\n"
-              "#define NO_UNUSED_WARNING __attribute__ ((unused))\n"
-              "#else\n"
-              "#define NO_UNUSED_WARNING\n"
-              "#endif\n"
-              "\n", c_file);
+        fprintf(c_file, "#include \"%s.h\"\n\n", fnt_name);
+
+        // Write header into H file.
+        fprintf(h_file,
+            "#pragma once\n"
+            "\n"
+            "#include \"../df_font.h\"\n"
+            "\n"
+            "extern DfFontSource %s;\n", fnt_name);
 
         // Write header into bin file.
         char version = 0;
@@ -381,10 +389,12 @@ int main(int argc, char *argv[]) {
             fwrite(&dummy_offset, 1, 4, bin_file);
         }
 
+        // Loop through all fonts.
         std::vector <unsigned> font_datas_num_bytes;
         for (int i = 0; i < num_fnts; i++) {
             MemBuf buf;
             FullFnt *fnt = all_fnts[i];
+                      
             WriteDfbfToMemBuf(&buf, fnt);
             buf.WriteToCFile(c_file, fnt_name, fnt->hdr.max_width, fnt->hdr.pix_height);
             
@@ -394,18 +404,29 @@ int main(int argc, char *argv[]) {
             fseek(bin_file, pos, SEEK_SET);
             buf.WriteToBinFile(bin_file);
 
+            fprintf(h_file, "extern unsigned const %s_%ix%i[%d];\n", fnt_name, 
+                fnt->hdr.max_width, fnt->hdr.pix_height, (buf.data_num_bytes + 3)/4);
+
             font_datas_num_bytes.push_back(buf.data_num_bytes);
         }
 
+        //
         // Write footer into C file.
-        fprintf(c_file, "static const unsigned char %s_sizes[] = { ", fnt_name);
+
+        // Pixel widths
+        fprintf(c_file, "static unsigned char const %s_pixelWidths[] = { ", fnt_name);
+        for (int i = 0; i < (num_fnts - 1); i++)
+            fprintf(c_file, "%d, ", all_fnts[i]->hdr.max_width);
+        fprintf(c_file, "%d };\n", all_fnts[num_fnts - 1]->hdr.max_width);
+
+        // Pixel heights
+        fprintf(c_file, "static unsigned char const %s_pixelHeights[] = { ", fnt_name);
         for (int i = 0; i < (num_fnts - 1); i++)
             fprintf(c_file, "%d, ", all_fnts[i]->hdr.pix_height);
-        fprintf(c_file, "%d", all_fnts[num_fnts - 1]->hdr.pix_height);
-        fprintf(c_file, " };\nenum { ");
-        for (char *c = fnt_name; *c; c++) fputc(toupper(*c), c_file);
-        fprintf(c_file, "_NUM_FONTS = %d };\n", num_fnts);
-        fprintf(c_file, "static unsigned *%s_font_datas[] = {\n", fnt_name);
+        fprintf(c_file, "%d };\n", all_fnts[num_fnts - 1]->hdr.pix_height);
+
+        // Data blobs
+        fprintf(c_file, "static unsigned const *%s_dataBlobs[] = {\n", fnt_name);
         for (int i = 0; i < num_fnts; i++) {
             FullFnt *fnt = all_fnts[i];
             fprintf(c_file, "    %s_%dx%d", fnt_name, fnt->hdr.max_width, fnt->hdr.pix_height);
@@ -414,14 +435,25 @@ int main(int argc, char *argv[]) {
             }
         };
         fprintf(c_file, "\n};\n");
-        fprintf(c_file, "static unsigned %s_font_datas_num_bytes[] = {\n", fnt_name);
+        
+        // Data blob sizes
+        fprintf(c_file, "static unsigned const %s_dataBlobSizes[] = {\n", fnt_name);
         for (int i = 0; i < num_fnts; i++) {
             fprintf(c_file, "    %d", font_datas_num_bytes[i]);
             if (i < (num_fnts - 1)) {
                 fprintf(c_file, ",\n");
             }
-        };
+        }
         fprintf(c_file, "\n};\n");
+
+        // DfFontSource
+        fprintf(c_file, "DfFontSource %s = {\n", fnt_name);
+        fprintf(c_file, "    %d, // numSizes\n", num_fnts);
+        fprintf(c_file, "    %s_pixelWidths,\n", fnt_name);
+        fprintf(c_file, "    %s_pixelHeights,\n", fnt_name);
+        fprintf(c_file, "    %s_dataBlobs,\n", fnt_name);
+        fprintf(c_file, "    %s_dataBlobSizes\n", fnt_name);
+        fprintf(c_file, "};\n");
     }
 
     while (!g_window->windowClosed && !g_window->input.keyDowns[KEY_ESC]) {

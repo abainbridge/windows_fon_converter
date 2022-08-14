@@ -27,6 +27,7 @@
     <ClCompile Include="..\deadfrog-lib\src\df_message_dialog.cpp" />
     <ClCompile Include="..\deadfrog-lib\src\df_time.cpp" />
     <ClCompile Include="..\deadfrog-lib\src\df_window.cpp" />
+    <ClCompile Include="..\deadfrog-lib\src\fonts\df_prop.cpp" />
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -38,6 +39,7 @@
     <ClInclude Include="..\deadfrog-lib\src\df_message_dialog.h" />
     <ClInclude Include="..\deadfrog-lib\src\df_time.h" />
     <ClInclude Include="..\deadfrog-lib\src\df_window.h" />
+    <ClInclude Include="..\deadfrog-lib\src\fonts\df_prop.h" />
     <ClInclude Include="src\windows_fnt.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

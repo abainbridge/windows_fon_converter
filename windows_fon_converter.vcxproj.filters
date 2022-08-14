@@ -26,6 +26,9 @@
     <ClCompile Include="..\deadfrog-lib\src\df_window.cpp">
       <Filter>deadfrog-lib</Filter>
     </ClCompile>
+    <ClCompile Include="..\deadfrog-lib\src\fonts\df_prop.cpp">
+      <Filter>deadfrog-lib\fonts</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\deadfrog-lib\src\df_bitmap.h">
@@ -53,10 +56,16 @@
       <Filter>deadfrog-lib</Filter>
     </ClInclude>
     <ClInclude Include="src\windows_fnt.h" />
+    <ClInclude Include="..\deadfrog-lib\src\fonts\df_prop.h">
+      <Filter>deadfrog-lib\fonts</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="deadfrog-lib">
       <UniqueIdentifier>{22c1c0cc-663a-4fc4-bbb0-2d482ea908e0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="deadfrog-lib\fonts">
+      <UniqueIdentifier>{36ffae4d-9e1e-4573-a378-2c1b3e4b1e85}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>
