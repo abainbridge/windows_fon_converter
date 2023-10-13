@@ -144,6 +144,8 @@ FullFnt *ReadFntResourceItem(FILE *f, int block_size) {
             }
         }
 
+        // Indicate widths of proportional width glyphs by shading in red
+        // the region where they are narrower than the widest glyph.
         int glyph_width = full_fnt->glyph_table[i].pix_width;
         for (int j = glyph_width; j < full_fnt->hdr.max_width; j++) {
             int x = (i % 16) * fnt->max_width + j;
@@ -379,6 +381,10 @@ int main(int argc, char *argv[]) {
             "\n"
             "#include \"../df_font.h\"\n"
             "\n"
+            "#ifdef __cplusplus\n"
+            "extern \"C\" {\n"
+            "#endif\n"
+            "\n"
             "extern DfFontSource %s;\n", fnt_name);
 
         // Write header into bin file.
@@ -409,6 +415,16 @@ int main(int argc, char *argv[]) {
 
             font_datas_num_bytes.push_back(buf.data_num_bytes);
         }
+
+        //
+        // Write footer into H file.
+
+        fprintf(h_file,
+            "\n"
+            "#ifdef __cplusplus\n"
+            "}\n"
+            "#endif\n");
+
 
         //
         // Write footer into C file.
