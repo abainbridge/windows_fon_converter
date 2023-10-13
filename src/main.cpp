@@ -266,7 +266,7 @@ char *GetNameFromPath(const char *path) {
 
 int main(int argc, char *argv[]) {
     char const *path = NULL;
-    //path = "c:/coding/deadfrog-lib/src/fonts/df_prop.fon";
+    path = "c:/coding/deadfrog-lib/src/fonts/df_mono.fon";
 
     if (!path) {
         if (argc != 2) {
@@ -278,7 +278,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    g_window = CreateWin(1400, 800, WT_WINDOWED_FIXED, ".FON Converter");
+    g_window = CreateWin(2300, 1000, WT_WINDOWED_FIXED, ".FON Converter");
     BitmapClear(g_window->bmp, g_colourBlack);
 
     FILE *f = fopen(path, "rb");
@@ -333,8 +333,9 @@ int main(int argc, char *argv[]) {
                 num_fnts++;
 
 //                DoUpPrediction(all_fnts[i]->bmp);
-                ScaleUpBlit(g_window->bmp, x, 0, 2, all_fnts[i]->bmp);
-                x += (all_fnts[i]->bmp->width + 10);
+                DfBitmap *fb = all_fnts[i]->bmp;
+                ScaleUpBlit(g_window->bmp, x, 0, 2, fb);
+                x += (fb->width * 2);
             }
 
             break;
